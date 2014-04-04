@@ -110,7 +110,7 @@ class Highrise:
 
         log.debug(r.text)
 
-        # if this was a PUT or DELETE request, return status (hopefully success)
+        # if this was a PUT or DELETE request, return status
         if method in ('PUT', 'DELETE'):
             return r.status_code
 
@@ -118,7 +118,8 @@ class Highrise:
         try:
             return ElementTree.fromstring(r.text)
         except:
-            raise UnexpectedResponse("The server sent back something that wasn't valid XML.")
+            raise UnexpectedResponse(
+                "The server sent back something that wasn't valid XML.")
 
     @classmethod
     def key_to_class(cls, key):
@@ -169,7 +170,7 @@ class HighriseObject(object):
                 continue
 
             # if there is no data, just set the default
-            if child.text == None:
+            if child.text is None:
                 self.__dict__[key] = self.fields[key].default
                 continue
 
@@ -189,7 +190,8 @@ class HighriseObject(object):
                         if item.tag == 'party':
                             class_string = item.find('type').text
                         else:
-                            class_string = Highrise.key_to_class(item.tag.replace('_', '-'))
+                            class_string = Highrise.key_to_class(
+                                item.tag.replace('_', '-'))
                         klass = getattr(sys.modules[__name__], class_string)
                         items.append(klass.from_xml(item, parent=self))
                     self.__dict__[child.tag.replace('-', '_')] = items
@@ -202,7 +204,8 @@ class HighriseObject(object):
                     else:
                         class_string = Highrise.key_to_class(child.tag)
                     klass = getattr(sys.modules[__name__], class_string)
-                    self.__dict__[child.tag.replace('-', '_')] = klass.from_xml(child, parent=self)
+                    self.__dict__[child.tag.replace('-', '_')] = \
+                        klass.from_xml(child, parent=self)
                     continue
 
             # get and convert attribute value based on type
@@ -210,7 +213,8 @@ class HighriseObject(object):
             if data_type == 'integer':
                 value = int(child.text)
             elif data_type == 'datetime':
-                value = Highrise.from_utc(datetime.strptime(child.text, '%Y-%m-%dT%H:%M:%SZ'))
+                value = Highrise.from_utc(
+                    datetime.strptime(child.text, '%Y-%m-%dT%H:%M:%SZ'))
             else:
                 try:
                     value = unicode(child.text)
@@ -236,7 +240,6 @@ class HighriseObject(object):
 
         return objects
 
-
     def __init__(self, parent=None, **kwargs):
         """Create a new object manually."""
 
@@ -244,26 +247,28 @@ class HighriseObject(object):
         for field, settings in self.fields.items():
             if field in kwargs:
                 if not settings.is_editable:
-                    raise KeyError('{} is not an editable attribute'.format(field))
+                    raise KeyError(
+                        '{} is not an editable attribute'.format(field))
                 value = kwargs.pop(field)
             else:
                 value = settings.default
             self.__dict__[field] = value
-
 
     def save_xml(self, include_id=False, **kwargs):
         """Return the object XML for sending back to Highrise"""
 
         # create new XML object
         if 'base_element' not in kwargs:
-            kwargs['base_element'] = Highrise.class_to_key(self.__class__.__name__)
+            kwargs['base_element'] = Highrise.class_to_key(
+                self.__class__.__name__)
         xml = ElementTree.Element(kwargs['base_element'])
 
         extra_attrs = kwargs.get('extra_attrs', {})
 
         # if the id should be included and it is not None, add it first
-        if include_id and 'id' in self.__dict__ and self.id != None:
-            id_element = ElementTree.SubElement(xml, tag='id', attrib={'type': 'integer'})
+        if include_id and 'id' in self.__dict__ and self.id is not None:
+            id_element = ElementTree.SubElement(xml, tag='id',
+                                                attrib={'type': 'integer'})
             try:
                 id_element.text = unicode(self.id)
             except:
@@ -357,6 +362,7 @@ class SubjectField(HighriseObject):
         """Get all custom fields"""
 
         return cls._list('subject_fields.xml', 'subject-field')
+
 
 class Tag(HighriseObject):
     """An object representing a Highrise tag."""
@@ -465,7 +471,7 @@ class Message(HighriseObject):
         xml_string = ElementTree.tostring(xml, encoding=None)
 
         # if this was an initial save, update the object with the returned data
-        if self.id == None:
+        if self.id is None:
             response = Highrise.request('/{}.xml'.format(self.plural), method='POST', xml=xml_string)
             new = self.from_xml(response)
 
@@ -473,7 +479,7 @@ class Message(HighriseObject):
         # so we can get any new ID values set at ceation
         else:
             response = Highrise.request('/{}/{}.xml'.format(self.plural, self.id), method='PUT', xml=xml_string)
-            new = cls.get(self.id)
+            new = self.get(self.id)
 
         # update the values of self to align with what came back from Highrise
         self.__dict__ = new.__dict__
@@ -672,7 +678,7 @@ class Task(HighriseObject):
     def all(cls):
         """Get all tasks"""
 
-        return cls._list('tasks.xml', 'task')
+        return cls._list('tasks/all.xml', 'task')
 
     @classmethod
     def get(cls, id):
